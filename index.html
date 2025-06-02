@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Verification System</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, #0f0f0f, #1a1a1a);
+      color: #00ffe7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 2rem;
+    }
+    .container {
+      background-color: #111;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: 0 0 30px #00ffe7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 500px;
+    }
+    input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      width: 100%;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    button {
+      margin-top: 1rem;
+      background-color: #00ffe7;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      color: #000;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #00cccc;
+    }
+    .result {
+      margin-top: 1rem;
+      font-size: 1.25rem;
+    }
+    .hidden {
+      display: none;
+    }
+    img {
+      max-width: 100%;
+      margin-top: 1rem;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <h1>Voice Verification System</h1>
+  <div class="container" id="audioSection">
+    <button onclick="generateCaptcha()">Play Captcha</button>
+    <input type="text" id="captchaInput" placeholder="Enter the numbers you heard" />
+    <button onclick="checkCaptcha()">Verify</button>
+    <div class="result" id="resultMsg"></div>
+  </div>
+
+  <div class="container hidden" id="imageSection">
+    <p>Please enter the captcha shown below:</p>
+    <img id="captchaImg" src="" alt="Captcha Image" />
+    <input type="text" id="imageCaptchaInput" placeholder="Enter captcha" />
+    <button onclick="checkImageCaptcha()">Submit</button>
+    <button onclick="refreshImageCaptcha()">Refresh</button>
+    <div class="result" id="imageResult"></div>
+  </div>
+
+  <div class="container hidden" id="urlSection">
+    <p>Please enter the URL to shorten it:</p>
+    <input type="text" id="urlInput" placeholder="https://example.com" />
+    <button onclick="shortenUrl()">Shorten URL</button>
+    <p class="result" id="shortenedUrl"></p>
+    <button onclick="copyUrl()">Copy Shortened URL</button>
+    <button onclick="showAlarm()">⏰ Alarm Clock</button>
+  </div>
+
+  <div class="container hidden" id="alarmSection">
+    <p>Set Alarm (HH:MM 24-hour format):</p>
+    <input type="time" id="alarmTime" />
+    <p>Alarm Message:</p>
+    <input type="text" id="alarmMsg" placeholder="Wake up!" />
+    <button onclick="startAlarm()">Set Alarm</button>
+    <button onclick="showUrlShortener()">🔙 Back</button>
+    <div class="result" id="alarmStatus"></div>
+  </div>
+
+  <script>
+    let currentCaptcha = "";
+    let currentImageCaptcha = "";
+    let alarmInterval = null;
+
+    function generateCaptcha() {
+      currentCaptcha = "";
+      let numbers = [];
+      for (let i = 0; i < 4; i++) {
+        let num = Math.floor(Math.random() * 10);
+        currentCaptcha += num;
+        numbers.push(num);
+      }
+
+      const spokenPart = numbers.join(' ');
+
+      const firstUtterance = new SpeechSynthesisUtterance(spokenPart);
+      const secondUtterance = new SpeechSynthesisUtterance(spokenPart);
+
+      firstUtterance.rate = 1.2;
+      firstUtterance.pitch = 1;
+      firstUtterance.lang = 'en-US';
+
+      secondUtterance.rate = 1.2;
+      secondUtterance.pitch = 1;
+      secondUtterance.lang = 'en-US';
+
+      firstUtterance.onend = () => {
+        setTimeout(() => {
+          speechSynthesis.speak(secondUtterance);
+        }, 1000);
+      };
+
+      speechSynthesis.speak(firstUtterance);
+    }
+
+    function checkCaptcha() {
+      const input = document.getElementById("captchaInput").value;
+      const resultMsg = document.getElementById("resultMsg");
+      if (input === currentCaptcha) {
+        resultMsg.textContent = "✅ Captcha Verified! Moving on...";
+        resultMsg.style.color = "#00ff88";
+        setTimeout(() => {
+          document.getElementById("audioSection").classList.add("hidden");
+          document.getElementById("imageSection").classList.remove("hidden");
+          refreshImageCaptcha();
+        }, 1500);
+      } else {
+        resultMsg.textContent = "❌ Incorrect Captcha. Try again.";
+        resultMsg.style.color = "#ff5555";
+      }
+    }
+
+    function generateRandomImageCaptcha(length = 4) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let captcha = '';
+      for (let i = 0; i < length; i++) {
+        captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return captcha;
+    }
+
+    function refreshImageCaptcha() {
+      currentImageCaptcha = generateRandomImageCaptcha();
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 100;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.font = '40px Orbitron';
+      ctx.fillStyle = '#0ff';
+      ctx.fillText(currentImageCaptcha, 20, 65);
+
+      for (let i = 0; i < 20; i++) {
+        ctx.fillStyle = '#0ff5';
+        ctx.beginPath();
+        ctx.arc(Math.random()*200, Math.random()*100, 1.5, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      document.getElementById('captchaImg').src = canvas.toDataURL();
+    }
+
+    function checkImageCaptcha() {
+      const input = document.getElementById("imageCaptchaInput").value;
+      const resultMsg = document.getElementById("imageResult");
+      if (input === currentImageCaptcha) {
+        resultMsg.textContent = "✅ Image Captcha Verified! Redirecting...";
+        resultMsg.style.color = "#00ff88";
+        setTimeout(() => {
+          document.getElementById("imageSection").classList.add("hidden");
+          document.getElementById("urlSection").classList.remove("hidden");
+        }, 1500);
+      } else {
+        resultMsg.textContent = "🚨 YOU ARE A ROBOT! ACCESS DENIED!";
+        resultMsg.style.color = "#ff5555";
+      }
+    }
+
+    function shortenUrl() {
+      const url = document.getElementById("urlInput").value;
+      fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`)
+        .then(response => response.text())
+        .then(shortUrl => {
+          document.getElementById("shortenedUrl").textContent = shortUrl;
+        })
+        .catch(() => {
+          document.getElementById("shortenedUrl").textContent = "❌ Failed to shorten URL.";
+        });
+    }
+
+    function copyUrl() {
+      const text = document.getElementById("shortenedUrl").textContent.trim();
+      if (!text || text.startsWith("❌")) return;
+      try {
+        navigator.clipboard.writeText(text);
+      } catch {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+    }
+
+    function showAlarm() {
+      document.getElementById("urlSection").classList.add("hidden");
+      document.getElementById("alarmSection").classList.remove("hidden");
+    }
+
+    function showUrlShortener() {
+      document.getElementById("alarmSection").classList.add("hidden");
+      document.getElementById("urlSection").classList.remove("hidden");
+    }
+
+    function startAlarm() {
+      const alarmInput = document.getElementById('alarmTime').value;
+      const alarmMsg = document.getElementById('alarmMsg').value || "Alarm ringing!";
+      const status = document.getElementById('alarmStatus');
+
+      if (!alarmInput) return;
+
+      if (alarmInterval) clearInterval(alarmInterval);
+
+      status.textContent = `Alarm set for ${alarmInput}`;
+      status.style.color = "#00ff88";
+
+      alarmInterval = setInterval(() => {
+        const now = new Date();
+        const nowHHMM = now.toTimeString().slice(0,5);
+
+        if (nowHHMM === alarmInput) {
+          playBeep(() => speakMessage(alarmMsg));
+          clearInterval(alarmInterval);
+          status.textContent = "✅ Alarm triggered!";
+        }
+      }, 1000);
+    }
+
+    function playBeep(callback) {
+      const duration = 5; // in seconds
+      const context = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "square";
+      oscillator.frequency.value = 1000;
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      setTimeout(() => {
+        oscillator.stop();
+        callback();
+      }, duration * 1000);
+    }
+
+    function speakMessage(msg) {
+      const utterance = new SpeechSynthesisUtterance(msg);
+      utterance.lang = 'en-US';
+      utterance.pitch = 1;
+      utterance.rate = 1;
+      speechSynthesis.speak(utterance);
+    }
+  </script>
+</body>
+</html>
